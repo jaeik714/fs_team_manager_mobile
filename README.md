@@ -12,7 +12,7 @@
 fs_team_manager_mobile/
 ├── index.html              # 앱 첫 화면(한 페이지 앱의 뼈대)
 ├── manifest.webmanifest    # 홈 화면 아이콘·이름·전체 화면 설정 (PWA)
-├── sw.js                   # Service Worker: 앱 파일을 캐시해 오프라인 실행
+├── sw.js                   # Service Worker: 앱 파일 전체를 저장해 인터넷 없이 열기. 올릴 때 VERSION 변경(CHANGELOG 와 같게)
 ├── css/                    # 화면 스타일 (휴대폰 폭 360~412px 기준, 팀 컬러)
 ├── js/
 │   ├── app.js              # 시작점: sql.js 로드 → 장부 열기 → 화면 전환, 불러오기·백업 보내기
@@ -28,10 +28,10 @@ fs_team_manager_mobile/
 │   │   ├── secure.js       # 백업 비밀번호로 잠근 파일(.fmbk) — PC data/secure_backup.py 와 같은 형식
 │   │   └── cloud.js        # GitHub 비공개 저장소 올리기·받아오기 — PC data/cloud_sync.py 대응
 │   ├── views/              # 화면: home·dues(회비)·bank(통장)·members(회원)·backup(+settings 팀 설정)
-│   └── share/              # 공유 이미지(Canvas) — PC utils/share_image.py 대응
+│   └── share/report.js     # 회비운영현황 공유 이미지 2장(Canvas) — PC utils/share_image.py 휴대폰용과 같은 디자인
 ├── vendor/sql.js/          # SQLite(WebAssembly) — 오프라인용으로 저장소에 포함 (MIT)
-├── fonts/                  # 공유 이미지용 한글 글꼴(2,350자로 줄인 파일)
-├── icons/                  # 홈 화면 아이콘 (192·512px)
+├── fonts/                  # 공유 이미지용 글꼴 — Pretendard 2,350자(433KB)·Black Han Sans 제목 글자(6KB), OFL 라이선스
+├── icons/                  # 홈 화면 아이콘 (192·512·maskable·apple-touch·favicon)
 ├── tests/                  # node --test (npm test): PC 테스트와 같은 사례로 업무 규칙 검증
 ├── tools/pc-compare/       # PC ↔ 휴대폰 업무 규칙 무작위 비교 (PC 규칙을 고친 뒤 실행)
 ├── package.json            # 테스트·로컬 서버 명령 (설치할 패키지 없음)
@@ -49,3 +49,8 @@ python -m http.server 8000
 ## PC 버전과의 약속
 - `settings` 표의 `schema_version` · `last_modified`(`YYYY-MM-DD HH:MM:SS`) · `last_device`(`PC`/`휴대폰`)
 - 내 버전보다 큰 `schema_version` 파일은 열지 않는다. 불러올 파일이 더 오래됐으면 경고 + 추가 확인
+
+## 새 버전 올리는 순서
+1. `CHANGELOG.md` 맨 위에 새 버전 기록, `sw.js` 의 `VERSION` 을 같은 값으로 (다르면 `npm test` 실패)
+2. 새 파일을 만들었으면 `sw.js` 의 `FILES` 에 추가 (빠지면 `npm test` 실패 — 인터넷 없을 때 그 파일이 안 열림)
+3. `npm test` 통과 → 커밋 → push. 휴대폰은 다음에 열 때 새 버전을 받아 두고 **[새 버전 적용]** 알림
