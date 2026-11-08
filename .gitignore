@@ -12,6 +12,7 @@
 *.xlsx
 *.xls
 *.csv
+*.fmbk
 private/
 
 # 개발 도구

@@ -129,3 +129,13 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
 .help summary { cursor: pointer; font-weight: 700; color: var(--text); min-height: 32px; }
 .help ol { margin: 6px 0 0; padding-left: 1.2em; line-height: 1.7; }
 .help code { font-size: .8rem; background: var(--bg); padding: 1px 4px; border-radius: 4px; }
+
+/* ── 입력 칸 ── */
+.form { display: grid; gap: 10px; margin-top: 8px; }
+.field { display: grid; gap: 4px; font-size: .85rem; font-weight: 700; color: var(--text); }
+.field input {
+  font: inherit; font-weight: 400; font-size: 1rem; min-height: 46px; padding: 0 12px;
+  border: 1px solid var(--border); border-radius: 10px; background: var(--card); color: var(--text);
+}
+.field input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.btn[aria-busy="true"] { opacity: .6; pointer-events: none; }

@@ -1,6 +1,8 @@
 // 시작점: sql.js 로드 → 휴대폰에 저장된 장부 열기 → 화면(홈·백업) 전환.
 // 장부가 없으면 PC 백업 파일(.db)을 불러오는 첫 화면을 보여 준다.
 import { backupFileName, sendBackup } from "./db/backup.js";
+import { CloudError, RemoteIsNewer, checkRepo, makeConfig, pull, push } from "./db/cloud.js";
+import { SecureBackupError, checkPassword } from "./db/secure.js";
 import { LedgerError, NEEDS_EXTRA_CONFIRM, compareFreshness, getSettings, ledgerInfo, openLedger } from "./db/repo.js";
 import { clearLedger, getMeta, loadLedger, loadSafetyCopy, requestPersist, saveLedger, saveSafetyCopy, setMeta } from "./db/storage.js";
 import { $, errorBox, esc, setHeader, showTime, state, toast } from "./state.js";
@@ -41,8 +43,80 @@ function renderWelcome() {
     </section>`;
 }
 
-// ── 백업 보내기 ──
-async function onSendBackup() {
+// ── 백업 보내기: GitHub 연결이 있으면 올리기, 없으면 파일로 ──
+async function onSendBackup(button) {
+  return state.meta.cloud ? cloudPush(button) : onSendFile();
+}
+
+async function busy(button, fn) {
+  button?.setAttribute("aria-busy", "true");
+  try {
+    return await fn();
+  } finally {
+    button?.removeAttribute("aria-busy");
+  }
+}
+
+function cloudPassword() {
+  const pw = state.meta.cloud?.password || $("cloud-pw")?.value || "";
+  if (!pw) throw new CloudError("백업 비밀번호를 입력하세요.");
+  return pw;
+}
+
+async function cloudPush(button, force = false) {
+  try {
+    const res = await busy(button, () => push(state.db, state.meta.cloud, cloudPassword(), { force }));
+    state.meta = await setMeta({ lastBackupAt: new Date().toISOString(), lastBackupMethod: "cloud" });
+    toast(`GitHub 에 올렸습니다. (${res.meta.last_device} ${showTime(res.meta.last_modified)} 수정 장부)`);
+    await show();
+  } catch (e) {
+    if (e instanceof RemoteIsNewer) {
+      if (confirm(`${e.message}
+
+그래도 지금 휴대폰 장부로 덮어쓸까요?`)) return cloudPush(button, true);
+      return;
+    }
+    if (e instanceof CloudError || e instanceof SecureBackupError) return toast(e.message, "error");
+    throw e;
+  }
+}
+
+async function cloudPull(button) {
+  let bytes;
+  try {
+    bytes = await busy(button, () => pull(state.meta.cloud, cloudPassword()));
+  } catch (e) {
+    if (e instanceof CloudError || e instanceof SecureBackupError) return toast(e.message, "error");
+    throw e;
+  }
+  if (!bytes) return toast("저장소에 아직 올린 장부가 없습니다.", "warn");
+  await importBytes(bytes, "pull");
+}
+
+async function saveCloudForm(form) {
+  const f = Object.fromEntries(new FormData(form));
+  const button = form.querySelector("[type=submit]");
+  try {
+    if (f.password !== f.password2) throw new CloudError("백업 비밀번호와 확인이 다릅니다.");
+    checkPassword(f.password);
+    const cfg = makeConfig({ repo: f.repo, token: f.token, file: f.file, apiBase: state.meta.cloud?.apiBase });
+    await busy(button, () => checkRepo(cfg));
+    state.meta = await setMeta({ cloud: { ...cfg, password: f.remember ? f.password : "" } });
+    toast(`연결했습니다: ${cfg.repo} (비공개 저장소)`);
+    await show();
+  } catch (e) {
+    if (e instanceof CloudError || e instanceof SecureBackupError) return toast(e.message, "error");
+    throw e;
+  }
+}
+
+async function clearCloud() {
+  if (!confirm("GitHub 연결 정보를 이 휴대폰에서 지웁니다. (저장소에 올린 파일은 그대로 있습니다)")) return;
+  state.meta = await setMeta({ cloud: null });
+  await show();
+}
+
+async function onSendFile() {
   const name = backupFileName(getSettings(state.db).team_name);
   const result = await sendBackup(state.db.export(), name);
   if (result === "cancel") return toast("백업 보내기를 취소했습니다.", "warn");
@@ -80,7 +154,10 @@ function askImport(info, current) {
 }
 
 async function importFile(file) {
-  const bytes = new Uint8Array(await file.arrayBuffer());
+  await importBytes(new Uint8Array(await file.arrayBuffer()), "import");
+}
+
+async function importBytes(bytes, method) {
   let incoming;
   try {
     incoming = openLedger(state.SQL, bytes);
@@ -97,7 +174,7 @@ async function importFile(file) {
   if (state.db) await saveSafetyCopy(state.db.export());
   await saveLedger(incoming.export()); // 수정 시각은 파일에 적힌 그대로 (불러오기는 '수정'이 아님)
   // 불러온 파일은 보낸 쪽(PC 등)에 그대로 있으므로 그 시점을 백업으로 본다
-  state.meta = await setMeta({ lastBackupAt: new Date().toISOString(), lastBackupMethod: "import" });
+  state.meta = await setMeta({ lastBackupAt: new Date().toISOString(), lastBackupMethod: method });
   state.db?.close();
   state.db = incoming;
   toast("장부를 불러왔습니다.");
@@ -136,11 +213,21 @@ document.addEventListener("click", (e) => {
   if (el.dataset.tab) return show(el.dataset.tab);
   const actions = {
     import: () => $("file-input").click(),
-    "send-backup": onSendBackup,
+    "send-backup": () => onSendBackup(el),
+    "send-file": onSendFile,
+    "cloud-push": () => cloudPush(el),
+    "cloud-pull": () => cloudPull(el),
+    "cloud-clear": clearCloud,
     "undo-import": undoImport,
     clear: clearAll,
   };
   actions[el.dataset.action]?.();
+});
+document.addEventListener("submit", (e) => {
+  if (e.target.id === "cloud-form") {
+    e.preventDefault();
+    saveCloudForm(e.target);
+  }
 });
 $("file-input").addEventListener("change", async (e) => {
   const file = e.target.files?.[0];
