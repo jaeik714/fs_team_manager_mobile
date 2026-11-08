@@ -26,7 +26,8 @@ fs_team_manager_mobile/
 ├── vendor/sql.js/          # SQLite(WebAssembly) — 오프라인용으로 저장소에 포함 (MIT)
 ├── fonts/                  # 공유 이미지용 한글 글꼴(2,350자로 줄인 파일)
 ├── icons/                  # 홈 화면 아이콘 (192·512px)
-├── tests/                  # node --test: PC 테스트와 같은 사례로 업무 규칙 검증
+├── tests/                  # node --test (npm test): PC 테스트와 같은 사례로 업무 규칙 검증
+├── package.json            # 테스트·로컬 서버 명령 (설치할 패키지 없음)
 └── docs/devlog/            # 날짜별 개발 일지
 ```
 

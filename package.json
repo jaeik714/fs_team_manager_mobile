@@ -1,0 +1,9 @@
+{
+  "name": "fs-team-manager-mobile",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/",
+    "serve": "python -m http.server 8000"
+  }
+}
