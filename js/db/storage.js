@@ -54,3 +54,19 @@ export async function requestPersist() {
 export async function saveSafetyCopy(bytes) {
   await run("readwrite", (s) => s.put({ bytes, savedAt: new Date().toISOString() }, "before_import"));
 }
+
+/** 불러오기 전 안전 백업 { bytes, savedAt } 또는 null */
+export async function loadSafetyCopy() {
+  return (await run("readonly", (s) => s.get("before_import"))) ?? null;
+}
+
+/** 앱 정보(마지막 백업 시각 등). 장부 파일 밖에 둔다 — 장부에 넣으면 백업할 때마다 '수정'이 되어 버림 */
+export async function getMeta() {
+  return (await run("readonly", (s) => s.get("meta"))) ?? {};
+}
+
+export async function setMeta(values) {
+  const meta = { ...(await getMeta()), ...values };
+  await run("readwrite", (s) => s.put(meta, "meta"));
+  return meta;
+}

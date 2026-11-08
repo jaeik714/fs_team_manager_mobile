@@ -89,3 +89,43 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
 .check { display: flex; gap: 10px; align-items: flex-start; font-size: .88rem; line-height: 1.45; }
 .check input { width: 22px; height: 22px; flex: none; margin: 0; accent-color: var(--accent); }
 .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* ── 아래 탭 ── */
+main { padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
+.tabbar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+  display: grid; grid-template-columns: repeat(2, 1fr);
+  background: var(--card); border-top: 1px solid var(--border);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.tabbar[hidden] { display: none; }
+.tabbar button {
+  appearance: none; border: 0; background: none; font: inherit; font-size: .78rem; font-weight: 700;
+  color: var(--muted); min-height: 60px; display: grid; place-items: center; gap: 2px; padding: 6px 0;
+}
+.tabbar button .ico { font-size: 1.25rem; line-height: 1; }
+.tabbar button[aria-current="page"] { color: var(--accent); }
+
+/* ── 백업 알림 띠 ── */
+.banner {
+  display: grid; gap: 10px; padding: 14px; border-radius: var(--radius);
+  background: #FEF9C3; color: #713F12; border: 1px solid #FDE68A; font-size: .9rem; line-height: 1.5;
+}
+
+/* ── 잠깐 뜨는 알림 ── */
+.toast {
+  position: fixed; left: 16px; right: 16px; top: calc(12px + env(safe-area-inset-top)); z-index: 30;
+  padding: 12px 14px; border-radius: 12px; font-size: .9rem; font-weight: 600;
+  background: #1C1917; color: #fff; box-shadow: 0 6px 20px rgb(0 0 0 / .25);
+  opacity: 0; transform: translateY(-8px); pointer-events: none; transition: opacity .2s, transform .2s;
+}
+.toast.show { opacity: 1; transform: none; }
+.toast.warn { background: #713F12; }
+.toast.error { background: var(--red); }
+
+.card .value.small { font-size: 1.1rem; }
+.btn.ghost { background: none; border-style: dashed; color: var(--muted); font-weight: 600; }
+.help { font-size: .85rem; color: var(--muted); }
+.help summary { cursor: pointer; font-weight: 700; color: var(--text); min-height: 32px; }
+.help ol { margin: 6px 0 0; padding-left: 1.2em; line-height: 1.7; }
+.help code { font-size: .8rem; background: var(--bg); padding: 1px 4px; border-radius: 4px; }

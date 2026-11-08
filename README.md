@@ -15,14 +15,15 @@ fs_team_manager_mobile/
 ├── sw.js                   # Service Worker: 앱 파일을 캐시해 오프라인 실행
 ├── css/                    # 화면 스타일 (휴대폰 폭 360~412px 기준, 팀 컬러)
 ├── js/
-│   ├── app.js              # 시작점: sql.js 로드 → 장부 열기 → 화면 전환
+│   ├── app.js              # 시작점: sql.js 로드 → 장부 열기 → 화면 전환, 불러오기·백업 보내기
+│   ├── state.js            # 공통 상태(열린 장부)·저장(persist)·화면 도우미
 │   ├── db/
 │   │   ├── schema.js       # DB 구조 (PC data/db.py 와 동일, SCHEMA_VERSION)
 │   │   ├── storage.js      # 장부 파일을 IndexedDB 에 저장·불러오기
 │   │   ├── repo.js         # 읽기: 검사·요약·회비 현황·거래·잔액 (PC data/db.py 조회)
 │   │   ├── write.js        # 쓰기: 회비↔통장 연동·검사·수정 시각 기록 (PC data/db.py 쓰기)
-│   │   └── backup.js       # 백업 내보내기·불러오기, '더 오래된 파일' 경고, 7일 알림
-│   ├── views/              # 화면: 대시보드·회비 체크·거래 등록·공유·백업
+│   │   └── backup.js       # 백업 보내기(공유 창/다운로드)·7일 알림 판단
+│   ├── views/              # 화면: home(대시보드)·backup / 다음: 회비 체크·거래 등록·공유
 │   └── share/              # 공유 이미지(Canvas) — PC utils/share_image.py 대응
 ├── vendor/sql.js/          # SQLite(WebAssembly) — 오프라인용으로 저장소에 포함 (MIT)
 ├── fonts/                  # 공유 이미지용 한글 글꼴(2,350자로 줄인 파일)

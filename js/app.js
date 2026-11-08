@@ -1,30 +1,33 @@
-// 시작점 (시험판): sql.js 로드 → 휴대폰에 저장된 장부 열기 → 대시보드.
+// 시작점: sql.js 로드 → 휴대폰에 저장된 장부 열기 → 화면(홈·백업) 전환.
 // 장부가 없으면 PC 백업 파일(.db)을 불러오는 첫 화면을 보여 준다.
-import { clearLedger, loadLedger, requestPersist, saveLedger, saveSafetyCopy } from "./db/storage.js";
-import { LedgerError, NEEDS_EXTRA_CONFIRM, compareFreshness, dashboard, ledgerInfo, openLedger } from "./db/repo.js";
+import { backupFileName, sendBackup } from "./db/backup.js";
+import { LedgerError, NEEDS_EXTRA_CONFIRM, compareFreshness, getSettings, ledgerInfo, openLedger } from "./db/repo.js";
+import { clearLedger, getMeta, loadLedger, loadSafetyCopy, requestPersist, saveLedger, saveSafetyCopy, setMeta } from "./db/storage.js";
+import { $, errorBox, esc, setHeader, showTime, state, toast } from "./state.js";
+import { renderBackup } from "./views/backup.js";
+import { renderHome } from "./views/home.js";
 
-const $ = (id) => document.getElementById(id);
 const app = $("app");
-let SQL = null;
-let db = null; // 지금 열려 있는 장부 (sql.js Database)
+const TABS = { home: renderHome, backup: null }; // backup 은 안전 백업 정보가 필요해 따로 처리
+let tab = "home";
 
-const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-const krw = (n) => `${Number(n).toLocaleString("ko-KR")}원`;
-const signed = (n) => `${n > 0 ? "+" : ""}${Number(n).toLocaleString("ko-KR")}원`;
-
-function setHeader(eyebrow, title, sub = "") {
-  $("team-name").textContent = eyebrow;
-  $("page-title").textContent = title;
-  $("page-sub").textContent = sub;
+// ── 화면 전환 ──
+async function show(name = tab) {
+  tab = TABS[name] !== undefined ? name : "home";
+  $("tabbar").hidden = !state.db;
+  if (!state.db) return renderWelcome();
+  document.querySelectorAll("#tabbar [data-tab]").forEach((b) => b.setAttribute("aria-current", b.dataset.tab === tab ? "page" : "false"));
+  if (tab === "backup") {
+    const safety = await loadSafetyCopy();
+    renderBackup(app, { hasSafety: !!safety, safetyAt: safety?.savedAt });
+  } else {
+    renderHome(app);
+  }
+  window.scrollTo(0, 0);
 }
 
-function showError(message) {
-  app.insertAdjacentHTML("afterbegin", `<p class="error" role="alert">${esc(message)}</p>`);
-}
-
-// ── 첫 화면: 장부 없음 ──
 function renderWelcome() {
-  setHeader("Futsal Manager", "장부 불러오기", "휴대폰 시험판");
+  setHeader("Futsal Manager", "장부 불러오기", "휴대폰 버전");
   app.innerHTML = `
     <section class="hero">
       <h2>PC 장부 파일을 불러와 주세요</h2>
@@ -38,37 +41,14 @@ function renderWelcome() {
     </section>`;
 }
 
-// ── 대시보드 ──
-function renderDashboard() {
-  const d = dashboard(db);
-  const [, mm] = d.month.split("-");
-  const month = Number(mm);
-  const due = d.dues;
-  setHeader(d.settings.team_name || "Futsal Manager", `MATCHDAY · ${month}월`, `납부 기한 ${month}월 ${d.settings.fee_due_day}일`);
-
-  const unpaid = d.unpaid.length
-    ? `<ul class="list">${d.unpaid.map((u) => `
-        <li><span>${u.back_number ? `<b>${u.back_number}</b> ` : ""}${esc(u.member_name)}</span>
-            <span class="badge ${u.status === "확인 중" ? "pending" : "unpaid"}">${esc(u.status)}</span></li>`).join("")}</ul>`
-    : `<p class="muted">모두 납부했습니다. 👏</p>`;
-
-  const s = d.settings;
-  app.innerHTML = `
-    <div class="cards">
-      <div class="card"><div class="label">회원</div><div class="value">${d.members}명</div>
-        <div class="note">활동 ${d.active} · 휴면 ${d.members - d.active}</div></div>
-      <div class="card"><div class="label">${month}월 납부율</div><div class="value">${due.rate.toFixed(1)}%</div>
-        <div class="note">${due.counts["납부 완료"]} / ${due.total}명${due.counts["면제"] ? ` · 면제 ${due.counts["면제"]}` : ""}</div></div>
-      <div class="card"><div class="label">${month}월 회비 수입</div><div class="value">${krw(due.collected)}</div>
-        <div class="note">${due.pending_amount ? `확인 중 ${krw(due.pending_amount)}` : "확인 중 없음"}</div></div>
-      <div class="card"><div class="label">통장 잔액</div><div class="value">${krw(d.balance)}</div>
-        <div class="note ${d.monthNet >= 0 ? "pos" : "neg"}">${month}월 ${signed(d.monthNet)}</div></div>
-    </div>
-    <h2 class="section-title">미납·확인 중 ${d.unpaid.length}명</h2>
-    ${unpaid}
-    <p class="muted">장부 마지막 수정: ${esc(s.last_modified.slice(0, 16) || "-")} (${esc(s.last_device || "기기 모름")})</p>
-    <button class="btn" data-action="import">다른 장부 파일 불러오기</button>
-    <button class="btn" data-action="clear">이 휴대폰에서 장부 지우기 (시험용)</button>`;
+// ── 백업 보내기 ──
+async function onSendBackup() {
+  const name = backupFileName(getSettings(state.db).team_name);
+  const result = await sendBackup(state.db.export(), name);
+  if (result === "cancel") return toast("백업 보내기를 취소했습니다.", "warn");
+  state.meta = await setMeta({ lastBackupAt: new Date().toISOString(), lastBackupMethod: result });
+  toast(result === "share" ? "백업 파일을 보냈습니다." : `다운로드 폴더에 저장했습니다: ${name}`);
+  await show();
 }
 
 // ── 불러오기 ──
@@ -76,7 +56,7 @@ function askImport(info, current) {
   const dialog = $("import-dialog");
   $("import-summary").innerHTML =
     `팀 <b>${esc(info.team_name || "-")}</b> · 회원 ${info.members}명 · 회비 기록 ${info.dues}건 · 거래 ${info.transactions}건<br>` +
-    `마지막 거래일 ${esc(info.last_tx_date || "-")} · 마지막 수정 ${esc(info.last_modified.slice(0, 16) || "-")} (${esc(info.last_device || "기기 모름")})`;
+    `마지막 거래일 ${esc(info.last_tx_date || "-")} · 마지막 수정 ${esc(showTime(info.last_modified))} (${esc(info.last_device || "기기 모름")})`;
 
   const fresh = current ? compareFreshness(info, current) : null;
   const needExtra = !!fresh && NEEDS_EXTRA_CONFIRM.includes(fresh.level);
@@ -103,37 +83,64 @@ async function importFile(file) {
   const bytes = new Uint8Array(await file.arrayBuffer());
   let incoming;
   try {
-    incoming = openLedger(SQL, bytes);
+    incoming = openLedger(state.SQL, bytes);
   } catch (e) {
-    showError(e instanceof LedgerError ? e.message : `파일을 열 수 없습니다. (${e.message})`);
+    toast(e instanceof LedgerError ? e.message : `파일을 열 수 없습니다. (${e.message})`, "error");
     return;
   }
   const info = ledgerInfo(incoming);
-  const current = db ? ledgerInfo(db) : null;
+  const current = state.db ? ledgerInfo(state.db) : null;
   if (!(await askImport(info, current))) {
     incoming.close();
     return;
   }
-  if (db) await saveSafetyCopy(db.export());
-  await saveLedger(incoming.export()); // 수정 시각은 파일에 적힌 그대로 유지 (불러오기는 '수정'이 아님)
-  db?.close();
-  db = incoming;
-  renderDashboard();
+  if (state.db) await saveSafetyCopy(state.db.export());
+  await saveLedger(incoming.export()); // 수정 시각은 파일에 적힌 그대로 (불러오기는 '수정'이 아님)
+  // 불러온 파일은 보낸 쪽(PC 등)에 그대로 있으므로 그 시점을 백업으로 본다
+  state.meta = await setMeta({ lastBackupAt: new Date().toISOString(), lastBackupMethod: "import" });
+  state.db?.close();
+  state.db = incoming;
+  toast("장부를 불러왔습니다.");
+  await show("home");
+}
+
+async function undoImport() {
+  const safety = await loadSafetyCopy();
+  if (!safety || !confirm(`${showTime(safety.savedAt)} 에 보관한 장부로 되돌립니다. 지금 장부는 그 대신 보관됩니다.`)) return;
+  let restored;
+  try {
+    restored = openLedger(state.SQL, safety.bytes);
+  } catch (e) {
+    return toast(`보관본을 열 수 없습니다: ${e.message}`, "error");
+  }
+  await saveSafetyCopy(state.db.export()); // 되돌리기를 다시 되돌릴 수 있게 맞바꿈
+  await saveLedger(safety.bytes);
+  state.db.close();
+  state.db = restored;
+  toast("불러오기 전 장부로 되돌렸습니다.");
+  await show();
 }
 
 async function clearAll() {
-  if (!confirm("이 휴대폰에 저장된 장부를 지웁니다. PC 에 백업이 있는지 확인하셨나요?")) return;
+  if (!confirm("이 휴대폰에 저장된 장부를 지웁니다. 백업 파일을 보내 두셨나요?")) return;
   await clearLedger();
-  db?.close();
-  db = null;
-  renderWelcome();
+  state.db?.close();
+  state.db = null;
+  await show();
 }
 
 // ── 이벤트 ──
-app.addEventListener("click", (e) => {
-  const action = e.target.closest("[data-action]")?.dataset.action;
-  if (action === "import") $("file-input").click();
-  if (action === "clear") clearAll();
+document.addEventListener("click", (e) => {
+  const el = e.target.closest("[data-action], [data-tab]");
+  if (!el) return;
+  if (el.dataset.tab) return show(el.dataset.tab);
+  const actions = {
+    import: () => $("file-input").click(),
+    "send-backup": onSendBackup,
+    "undo-import": undoImport,
+    clear: clearAll,
+  };
+  actions[el.dataset.action]?.();
 });
 $("file-input").addEventListener("change", async (e) => {
   const file = e.target.files?.[0];
@@ -144,26 +151,24 @@ $("file-input").addEventListener("change", async (e) => {
 // ── 시작 ──
 async function start() {
   try {
-    SQL = await initSqlJs({ locateFile: (f) => `vendor/sql.js/${f}` });
+    state.SQL = await initSqlJs({ locateFile: (f) => `vendor/sql.js/${f}` });
   } catch (e) {
     setHeader("Futsal Manager", "시작할 수 없습니다");
-    app.innerHTML = "";
-    showError(`SQLite 를 불러오지 못했습니다. (${e.message})`);
+    app.innerHTML = errorBox(`SQLite 를 불러오지 못했습니다. (${e.message})`);
     return;
   }
   requestPersist();
+  state.meta = await getMeta();
   const saved = await loadLedger();
   if (saved) {
     try {
-      db = openLedger(SQL, saved.bytes);
+      state.db = openLedger(state.SQL, saved.bytes);
     } catch (e) {
-      renderWelcome();
-      showError(`저장된 장부를 열 수 없습니다: ${e.message}`);
+      await show();
+      app.insertAdjacentHTML("afterbegin", errorBox(`저장된 장부를 열 수 없습니다: ${e.message}`));
       return;
     }
-    renderDashboard();
-  } else {
-    renderWelcome();
   }
+  await show("home");
 }
 start();
