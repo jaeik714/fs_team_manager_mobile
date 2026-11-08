@@ -1,0 +1,22 @@
+# ─────────────────────────────────────────────
+# 개인정보 포함 파일 (git 업로드 금지) — 이 저장소는 GitHub Pages 로 공개된다.
+#  회원 실명·연락처·계좌번호가 들어가는 파일은 절대 올리지 않는다.
+#  데이터는 휴대폰 브라우저 저장소(IndexedDB)에만 있다.
+# ─────────────────────────────────────────────
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.xlsx
+*.xls
+*.csv
+private/
+
+# 개발 도구
+node_modules/
+.DS_Store
+Thumbs.db
+*.key
+*.secret
