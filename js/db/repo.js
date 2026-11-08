@@ -112,7 +112,7 @@ export function getMonthDues(db, ym) {
     FROM members m
     LEFT JOIN dues d ON d.member_id = m.id AND d.year_month = :ym
     WHERE d.id IS NOT NULL OR (m.status = '활동' AND m.reg_date <= :end)
-    ORDER BY m.id`, { ":ym": ym, ":end": monthEnd(ym) });
+    ORDER BY m.id`, { ":ym": ym, ":end": monthEnd(ym) }).map((r) => ({ ...r, year_month: ym }));
 }
 
 /** PC summarize_dues: total = 납부 대상(면제 제외), 납부율 = 납부 완료 / 대상 */
@@ -165,3 +165,77 @@ export function compareFreshness(incoming, current) {
   return { level: "newer", message: `불러올 파일(${src})이 지금 장부(${cur})보다 최신입니다.` };
 }
 export const NEEDS_EXTRA_CONFIRM = ["older", "unknown"];
+
+// ── 거래·장부 조회 (PC list_transactions / month_ledger / category_summary) ──
+export const TX_TYPES = ["입금", "지출"];
+export const TX_CATEGORIES = ["회비", "이자", "구장 예약", "운영비", "기타"];
+// 잔액은 (장부 월, 거래일, ID) 순 누적합 → 전체 목록과 월별 장부의 잔액이 항상 일치
+const TX_SELECT = `
+  SELECT id, date, description, deposit, withdrawal, category, memo, ledger_month,
+         ${LEDGER_MONTH} AS month,
+         CASE WHEN deposit > 0 THEN '입금' ELSE '지출' END AS type,
+         SUM(deposit - withdrawal) OVER (ORDER BY ${LEDGER_MONTH}, date, id) AS balance
+  FROM transactions`;
+
+export function listTransactions(db, ym = null, newestFirst = false) {
+  const where = ym ? " WHERE month = :ym" : "";
+  const order = newestFirst ? " ORDER BY month DESC, date DESC, id DESC" : " ORDER BY month, date, id";
+  return all(db, `SELECT * FROM (${TX_SELECT})${where}${order}`, ym ? { ":ym": ym } : {});
+}
+
+export function getTransaction(db, id) {
+  return one(db, `SELECT * FROM (${TX_SELECT}) WHERE id = :id`, { ":id": id });
+}
+
+export function transactionMonths(db) {
+  return all(db, `SELECT DISTINCT ${LEDGER_MONTH} AS m FROM transactions ORDER BY 1 DESC`).map((r) => r.m);
+}
+
+export function balanceBefore(db, ym) {
+  return one(db, `SELECT COALESCE(SUM(deposit - withdrawal), 0) AS n FROM transactions WHERE ${LEDGER_MONTH} < :ym`,
+    { ":ym": ym }).n;
+}
+
+export function monthLedger(db, ym) {
+  const rows = listTransactions(db, ym);
+  const opening = balanceBefore(db, ym);
+  const income = rows.reduce((a, t) => a + t.deposit, 0);
+  const expense = rows.reduce((a, t) => a + t.withdrawal, 0);
+  return { year_month: ym, opening, rows, income, expense, closing: opening + income - expense };
+}
+
+export function categorySummary(rows) {
+  const extra = [...new Set(rows.map((t) => t.category))].filter((c) => !TX_CATEGORIES.includes(c)).sort();
+  return [...TX_CATEGORIES, ...extra].flatMap((category) => {
+    const items = rows.filter((t) => t.category === category);
+    if (!items.length) return [];
+    const income = items.reduce((a, t) => a + t.deposit, 0);
+    const expense = items.reduce((a, t) => a + t.withdrawal, 0);
+    return [{ category, count: items.length, income, expense, net: income - expense }];
+  });
+}
+
+// ── 회원 조회 ──
+export function listMembers(db, { status = null, search = null } = {}) {
+  let sql = "SELECT * FROM members WHERE 1=1";
+  const p = {};
+  if (status) { sql += " AND status = :status"; p[":status"] = status; }
+  if (search) { sql += " AND name LIKE :q"; p[":q"] = `%${search.trim()}%`; }
+  return all(db, sql + " ORDER BY id", p);
+}
+
+export function nextFreeBackNumber(db) {
+  const used = new Set(all(db, "SELECT back_number AS n FROM members WHERE back_number IS NOT NULL").map((r) => r.n));
+  for (let n = 1; n < 100; n++) if (!used.has(n)) return n;
+  return null;
+}
+
+// ── 회비 도우미 ──
+export function shiftMonth(ym, n) {
+  const [y, m] = ym.split("-").map(Number);
+  const idx = y * 12 + (m - 1) + n;
+  return `${String(Math.floor(idx / 12)).padStart(4, "0")}-${pad((idx % 12) + 1)}`;
+}
+
+/** 그 달이 시작되기 전에 입금된 납부 = 선납 */
+export const isPrepaid = (due) => due.status === "납부 완료" && !!due.paid_date && due.paid_date < `${due.year_month}-01`;

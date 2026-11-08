@@ -19,7 +19,8 @@ fs_team_manager_mobile/
 │   ├── db/
 │   │   ├── schema.js       # DB 구조 (PC data/db.py 와 동일, SCHEMA_VERSION)
 │   │   ├── storage.js      # 장부 파일을 IndexedDB 에 저장·불러오기
-│   │   ├── repo.js         # 업무 규칙: 회비↔통장 연동, 검사, 잔액 (PC data/db.py 대응)
+│   │   ├── repo.js         # 읽기: 검사·요약·회비 현황·거래·잔액 (PC data/db.py 조회)
+│   │   ├── write.js        # 쓰기: 회비↔통장 연동·검사·수정 시각 기록 (PC data/db.py 쓰기)
 │   │   └── backup.js       # 백업 내보내기·불러오기, '더 오래된 파일' 경고, 7일 알림
 │   ├── views/              # 화면: 대시보드·회비 체크·거래 등록·공유·백업
 │   └── share/              # 공유 이미지(Canvas) — PC utils/share_image.py 대응
