@@ -53,25 +53,14 @@ export function renderBackup(app, { hasSafety = false, safetyAt = null } = {}) {
     <button class="btn ghost" data-action="clear">이 휴대폰에서 장부 지우기</button>`;
 }
 
-function cloudSection() {
-  const c = state.meta.cloud;
-  const pwField = (id) => c && !c.password
-    ? `<label class="field">백업 비밀번호<input type="password" id="${id}" autocomplete="current-password"></label>` : "";
-  const status = c ? `<p class="muted">연결됨: <b>${esc(c.repo)}</b> (비공개 저장소) · ${esc(c.file)}</p>` : "";
+// 비밀번호를 기억하지 않은 연결이면 올리기·받아오기 때마다 입력받는 칸
+const pwField = (c, id) => c && !c.password
+  ? `<label class="field">백업 비밀번호<input type="password" id="${id}" autocomplete="current-password"></label>` : "";
+const cloudStatus = (c) => c ? `<p class="muted">연결됨: <b>${esc(c.repo)}</b> (비공개 저장소) · ${esc(c.file)}</p>` : "";
+
+// 연결 설정 입력 칸 (백업 화면과 첫 화면이 함께 씀)
+function cloudForm(c, submitLabel = "저장하고 연결 확인") {
   return `
-    <section class="hero" id="cloud">
-      <h2>GitHub 비공개 저장소</h2>
-      <p class="muted">장부를 <b>백업 비밀번호로 잠가</b> 내 비공개 저장소에 올리고, PC 에서 받아옵니다. 비밀번호를 모르면 아무도 열 수 없습니다.</p>
-      ${status}
-      ${c ? `
-        ${pwField("cloud-pw")}
-        <div class="actions">
-          <button class="btn primary" data-action="cloud-push">올리기</button>
-          <button class="btn" data-action="cloud-pull">받아오기</button>
-        </div>` : ""}
-      <details class="help" ${c ? "" : "open"}>
-        <summary>${c ? "연결 설정 바꾸기" : "연결 설정 (처음 한 번)"}</summary>
-        <p>PC 프로그램 › 백업·복원 › <b>휴대폰과 주고받기</b>에 넣은 것과 <b>같은 저장소·토큰·백업 비밀번호</b>를 넣으세요.</p>
         <form id="cloud-form" class="form" autocomplete="off">
           <label class="field">저장소 (아이디/저장소이름)<input name="repo" value="${esc(c?.repo ?? "")}" placeholder="jaeik714/fs_team_manager_data" autocapitalize="off" spellcheck="false"></label>
           <label class="field">접속 토큰<input name="token" type="password" value="${esc(c?.token ?? "")}" placeholder="github_pat_…"></label>
@@ -79,10 +68,47 @@ function cloudSection() {
           <label class="field">백업 비밀번호 확인<input name="password2" type="password" value="${esc(c?.password ?? "")}" autocomplete="new-password"></label>
           <label class="check"><input type="checkbox" name="remember" ${!c || c.password ? "checked" : ""}> 이 휴대폰에 비밀번호 기억 (끄면 올리기·받아오기 때마다 입력)</label>
           <input type="hidden" name="file" value="${esc(c?.file ?? DEFAULT_FILE)}">
-          <button class="btn primary" type="submit">저장하고 연결 확인</button>
+          <button class="btn primary" type="submit">${submitLabel}</button>
           ${c ? `<button class="btn ghost" type="button" data-action="cloud-clear">연결 해제</button>` : ""}
         </form>
-        <p>백업 비밀번호를 잊으면 올린 장부를 <b>아무도 풀 수 없습니다.</b> 따로 적어 두세요.</p>
+        <p>백업 비밀번호를 잊으면 올린 장부를 <b>아무도 풀 수 없습니다.</b> 따로 적어 두세요.</p>`;
+}
+
+// 첫 화면(장부가 아직 없는 휴대폰): GitHub 에 올려 둔 장부를 바로 받아오기
+export function welcomeCloudSection() {
+  const c = state.meta.cloud;
+  return `
+    <section class="hero" id="cloud">
+      <h2>GitHub 에서 받아오기</h2>
+      <p class="muted">PC 나 예전 휴대폰에서 <b>GitHub 비공개 저장소</b>에 올려 둔 장부를 바로 받아옵니다. 파일을 따로 옮길 필요가 없습니다.</p>
+      ${c ? `
+        ${cloudStatus(c)}
+        ${pwField(c, "cloud-pw")}
+        <button class="btn primary" data-action="cloud-pull">장부 받아오기</button>
+        <details class="help"><summary>연결 설정 바꾸기</summary>${cloudForm(c, "저장하고 장부 받아오기")}</details>` : `
+        <p>PC 프로그램 › 백업·복원 › <b>휴대폰과 주고받기</b>에 넣은 것과 <b>같은 저장소·토큰·백업 비밀번호</b>를 넣으세요.</p>
+        ${cloudForm(null, "연결하고 장부 받아오기")}`}
+    </section>`;
+}
+
+function cloudSection() {
+  const c = state.meta.cloud;
+  const status = cloudStatus(c);
+  return `
+    <section class="hero" id="cloud">
+      <h2>GitHub 비공개 저장소</h2>
+      <p class="muted">장부를 <b>백업 비밀번호로 잠가</b> 내 비공개 저장소에 올리고, PC 에서 받아옵니다. 비밀번호를 모르면 아무도 열 수 없습니다.</p>
+      ${status}
+      ${c ? `
+        ${pwField(c, "cloud-pw")}
+        <div class="actions">
+          <button class="btn primary" data-action="cloud-push">올리기</button>
+          <button class="btn" data-action="cloud-pull">받아오기</button>
+        </div>` : ""}
+      <details class="help" ${c ? "" : "open"}>
+        <summary>${c ? "연결 설정 바꾸기" : "연결 설정 (처음 한 번)"}</summary>
+        <p>PC 프로그램 › 백업·복원 › <b>휴대폰과 주고받기</b>에 넣은 것과 <b>같은 저장소·토큰·백업 비밀번호</b>를 넣으세요.</p>
+        ${cloudForm(c)}
       </details>
     </section>`;
 }

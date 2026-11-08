@@ -7,7 +7,7 @@ import { LedgerError, NEEDS_EXTRA_CONFIRM, compareFreshness, getSettings, ledger
 import { clearLedger, getMeta, loadLedger, loadSafetyCopy, requestPersist, saveLedger, saveSafetyCopy, setMeta } from "./db/storage.js";
 import { $, errorBox, esc, setHeader, showTime, state, toast } from "./state.js";
 import { applyTheme } from "./theme.js";
-import { renderBackup } from "./views/backup.js";
+import { renderBackup, welcomeCloudSection } from "./views/backup.js";
 import { onBankAction, renderBank } from "./views/bank.js";
 import { onDuesAction, renderDues } from "./views/dues.js";
 import { renderHome } from "./views/home.js";
@@ -40,15 +40,16 @@ async function show(name = tab) {
 function renderWelcome() {
   setHeader("Futsal Manager", "장부 불러오기", "휴대폰 버전");
   app.innerHTML = `
+    ${welcomeCloudSection()}
     <section class="hero">
-      <h2>PC 장부 파일을 불러와 주세요</h2>
+      <h2>또는 장부 파일 불러오기</h2>
       <ol>
         <li>PC 프로그램(v1.8.0 이상) › 백업·복원 › <b>백업 파일 내려받기</b></li>
         <li>내려받은 <b>.db</b> 파일을 카카오톡 '나와의 채팅' 등으로 휴대폰에 보내기</li>
         <li>아래 버튼을 눌러 그 파일 선택</li>
       </ol>
       <button class="btn primary" data-action="import">장부 파일 불러오기</button>
-      <p class="muted">장부는 이 휴대폰 안에만 저장됩니다. 인터넷으로 보내지 않습니다.</p>
+      <p class="muted">장부는 이 휴대폰 안에 저장됩니다. GitHub 에는 백업 비밀번호로 잠근 파일만 오갑니다.</p>
     </section>`;
 }
 
@@ -66,8 +67,8 @@ async function busy(button, fn) {
   }
 }
 
-function cloudPassword() {
-  const pw = state.meta.cloud?.password || $("cloud-pw")?.value || "";
+function cloudPassword(typed = "") {
+  const pw = state.meta.cloud?.password || typed || $("cloud-pw")?.value || "";
   if (!pw) throw new CloudError("백업 비밀번호를 입력하세요.");
   return pw;
 }
@@ -90,11 +91,13 @@ async function cloudPush(button, force = false) {
   }
 }
 
-async function cloudPull(button) {
+async function cloudPull(button, typedPassword = "") {
   let bytes;
   try {
-    bytes = await busy(button, () => pull(state.meta.cloud, cloudPassword()));
+    bytes = await busy(button, () => pull(state.meta.cloud, cloudPassword(typedPassword)));
   } catch (e) {
+    // 첫 화면에서 비밀번호가 틀렸으면 고칠 수 있게 연결 설정을 펼쳐 둠
+    if (!state.db && e instanceof SecureBackupError) app.querySelector("#cloud details")?.setAttribute("open", "");
     if (e instanceof CloudError || e instanceof SecureBackupError) return toast(e.message, "error");
     throw e;
   }
@@ -113,6 +116,8 @@ async function saveCloudForm(form) {
     state.meta = await setMeta({ cloud: { ...cfg, password: f.remember ? f.password : "" } });
     toast(`연결했습니다: ${cfg.repo} (비공개 저장소)`);
     await show();
+    // 첫 화면(장부 없음): 연결하자마자 장부 받아오기. 실패해도 연결은 남아 [장부 받아오기]로 다시 시도
+    if (!state.db) await cloudPull(app.querySelector("[data-action=cloud-pull]"), f.password);
   } catch (e) {
     if (e instanceof CloudError || e instanceof SecureBackupError) return toast(e.message, "error");
     throw e;

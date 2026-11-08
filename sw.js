@@ -2,7 +2,7 @@
 // - 앱 파일(이 저장소)만 저장한다. 장부는 IndexedDB 에 따로 있고, GitHub 동기화(api.github.com)는 저장하지 않고 늘 인터넷으로.
 // - 새 버전을 올릴 때는 VERSION 을 바꾼다 → 휴대폰이 새 파일을 받아 두고, 앱 화면에 [새 버전 적용]을 띄운다.
 // - FILES 에 빠진 파일이 있으면 tests/sw.test.js 가 실패한다.
-const VERSION = "0.6.0";
+const VERSION = "0.7.0";
 const CACHE = `futsal-manager-${VERSION}`;
 const FILES = [
   "./",
