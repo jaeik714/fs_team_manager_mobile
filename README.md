@@ -28,6 +28,7 @@ fs_team_manager_mobile/
 ├── fonts/                  # 공유 이미지용 한글 글꼴(2,350자로 줄인 파일)
 ├── icons/                  # 홈 화면 아이콘 (192·512px)
 ├── tests/                  # node --test (npm test): PC 테스트와 같은 사례로 업무 규칙 검증
+├── tools/pc-compare/       # PC ↔ 휴대폰 업무 규칙 무작위 비교 (PC 규칙을 고친 뒤 실행)
 ├── package.json            # 테스트·로컬 서버 명령 (설치할 패키지 없음)
 └── docs/devlog/            # 날짜별 개발 일지
 ```
