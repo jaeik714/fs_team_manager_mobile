@@ -239,3 +239,13 @@ export function shiftMonth(ym, n) {
 
 /** 그 달이 시작되기 전에 입금된 납부 = 선납 */
 export const isPrepaid = (due) => due.status === "납부 완료" && !!due.paid_date && due.paid_date < `${due.year_month}-01`;
+
+/** 회비·회원 기록이 시작된 첫 달 (월 선택 범위의 시작) */
+export function firstDataMonth(db) {
+  return one(db, "SELECT MIN(m) AS m FROM (SELECT MIN(year_month) AS m FROM dues UNION ALL SELECT MIN(substr(reg_date, 1, 7)) FROM members)").m;
+}
+
+/** 이 거래와 연결된 회비 납부 기록 수 (회비 ↔ 통장 연동) */
+export function linkedDueCount(db, txId) {
+  return one(db, "SELECT COUNT(*) AS n FROM dues WHERE tx_id = ?", [txId]).n;
+}

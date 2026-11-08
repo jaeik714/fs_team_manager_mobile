@@ -94,13 +94,13 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
 main { padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
 .tabbar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
-  display: grid; grid-template-columns: repeat(2, 1fr);
+  display: grid; grid-template-columns: repeat(5, 1fr);
   background: var(--card); border-top: 1px solid var(--border);
   padding-bottom: env(safe-area-inset-bottom);
 }
 .tabbar[hidden] { display: none; }
 .tabbar button {
-  appearance: none; border: 0; background: none; font: inherit; font-size: .78rem; font-weight: 700;
+  appearance: none; border: 0; background: none; font: inherit; font-size: .72rem; white-space: nowrap; font-weight: 700;
   color: var(--muted); min-height: 60px; display: grid; place-items: center; gap: 2px; padding: 6px 0;
 }
 .tabbar button .ico { font-size: 1.25rem; line-height: 1; }
@@ -139,3 +139,78 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
 }
 .field input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
 .btn[aria-busy="true"] { opacity: .6; pointer-events: none; }
+
+/* ── 월 이동 · 칩 ── */
+.month-nav { display: grid; grid-template-columns: 48px 1fr 48px; align-items: center; text-align: center; font-size: 1.05rem; }
+.icon-btn {
+  appearance: none; border: 1px solid var(--border); background: var(--card); color: var(--text);
+  width: 44px; height: 44px; border-radius: 12px; font-size: 1.4rem; line-height: 1;
+}
+.icon-btn:disabled { opacity: .35; }
+.chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+.chip {
+  appearance: none; flex: none; border: 1px solid var(--border); background: var(--card); color: var(--muted);
+  font: inherit; font-size: .82rem; font-weight: 700; border-radius: 999px; padding: 0 12px; min-height: 36px;
+}
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.chip.static { min-height: 28px; display: inline-flex; align-items: center; font-size: .75rem; }
+.small { font-size: .78rem; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+/* ── 회비 카드 ── */
+.due-card { display: grid !important; grid-template-columns: 1fr auto; grid-template-areas: "who btn" "meta btn"; gap: 2px 10px; cursor: pointer; }
+.due-card .who { grid-area: who; display: flex; align-items: center; gap: 8px; }
+.due-card .meta { grid-area: meta; display: flex; align-items: center; gap: 8px; }
+.due-card .btn { grid-area: btn; align-self: center; }
+.num { display: inline-grid; place-items: center; min-width: 28px; height: 24px; padding: 0 4px; border-radius: 6px;
+  background: var(--accent-soft, #FDECEE); color: var(--accent); font-size: .78rem; font-weight: 800; }
+.num.empty { background: var(--bg); color: var(--muted); }
+.who { display: flex; align-items: center; gap: 8px; }
+.badge.s-0 { color: var(--green); background: #F0FDF4; }   /* 납부 완료 */
+.badge.s-1 { color: var(--amber); background: #FEF9C3; }   /* 확인 중 · 휴면 */
+.badge.s-2 { color: var(--red); background: #FEF2F2; }     /* 미납 */
+.badge.s-3 { color: #6D28D9; background: #F5F3FF; }        /* 면제 */
+.btn.small { width: auto; min-height: 40px; padding: 0 14px; font-size: .85rem; }
+.btn.danger { color: var(--red); border-color: #FECACA; }
+.list li[data-action] { cursor: pointer; }
+.list li[data-action]:active { background: var(--bg); }
+
+/* ── 통장 ── */
+.ledger { display: grid; gap: 6px; }
+.ledger-row { display: flex; justify-content: space-between; font-size: .92rem; }
+.ledger-row.pos b { color: var(--green); }
+.ledger-row.neg b { color: var(--red); }
+.ledger-row.total { border-top: 1px solid var(--border); padding-top: 8px; font-size: 1.05rem; }
+.cat-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.tx-list li { display: grid !important; grid-template-columns: 40px 1fr auto; gap: 10px; align-items: center; }
+.tx-date { font-size: .8rem; color: var(--muted); font-weight: 700; }
+.tx-main, .tx-amt { display: grid; gap: 2px; min-width: 0; }
+.tx-main b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tx-amt { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ── 입력 창 ── */
+#sheet .sheet { max-height: 88dvh; grid-template-rows: auto 1fr auto auto; }
+.sheet-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.sheet-head .icon-btn { width: 40px; height: 40px; font-size: 1rem; }
+.sheet-body { overflow-y: auto; display: grid; gap: 12px; padding: 2px; }
+.actions.three { grid-template-columns: 1fr 1fr 1.3fr; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.field select, .field textarea {
+  font: inherit; font-weight: 400; font-size: 1rem; min-height: 46px; padding: 8px 12px;
+  border: 1px solid var(--border); border-radius: 10px; background: var(--card); color: var(--text);
+}
+.segmented { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; background: var(--bg); padding: 4px; border-radius: 12px; }
+.segmented label { position: relative; }
+.segmented input { position: absolute; opacity: 0; inset: 0; }
+.segmented span { display: grid; place-items: center; min-height: 40px; border-radius: 9px; font-size: .85rem; font-weight: 700; color: var(--muted); }
+.segmented input:checked + span { background: var(--card); color: var(--accent); box-shadow: 0 1px 3px rgb(0 0 0 / .12); }
+.segmented input:focus-visible + span { outline: 2px solid var(--accent); }
+.error[hidden] { display: none; }
+
+/* ── 팀 컬러 ── */
+.swatches { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.swatch { display: grid; justify-items: center; gap: 4px; font-size: .68rem; font-weight: 600; color: var(--muted); text-align: center; }
+.swatch input { position: absolute; opacity: 0; }
+.swatch span { width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, var(--a) 50%, var(--b) 50%); border: 3px solid transparent; }
+.swatch input:checked + span { border-color: var(--text); }
+.swatch em { font-style: normal; line-height: 1.2; }

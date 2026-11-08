@@ -24,13 +24,19 @@
   <!-- 아래 탭 (장부가 있을 때만) -->
   <nav id="tabbar" class="tabbar" hidden>
     <button data-tab="home" aria-current="page"><span class="ico" aria-hidden="true">⚽</span>홈</button>
-    <button data-tab="backup"><span class="ico" aria-hidden="true">💾</span>백업</button>
+    <button data-tab="dues"><span class="ico" aria-hidden="true">✅</span>회비</button>
+    <button data-tab="bank"><span class="ico" aria-hidden="true">💳</span>통장</button>
+    <button data-tab="members"><span class="ico" aria-hidden="true">👥</span>회원</button>
+    <button data-tab="backup"><span class="ico" aria-hidden="true">⚙️</span>백업·설정</button>
   </nav>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <!-- 장부 파일 불러오기 (화면에 보이지 않는 파일 선택 상자, 버튼으로 연다) -->
   <input type="file" id="file-input" accept=".db,application/octet-stream,application/x-sqlite3" hidden>
+
+  <!-- 입력 창 (회비·거래·회원 등록·수정) -->
+  <dialog id="sheet"></dialog>
 
   <!-- 불러오기 확인 창 -->
   <dialog id="import-dialog">

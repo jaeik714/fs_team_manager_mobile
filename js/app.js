@@ -6,11 +6,18 @@ import { SecureBackupError, checkPassword } from "./db/secure.js";
 import { LedgerError, NEEDS_EXTRA_CONFIRM, compareFreshness, getSettings, ledgerInfo, openLedger } from "./db/repo.js";
 import { clearLedger, getMeta, loadLedger, loadSafetyCopy, requestPersist, saveLedger, saveSafetyCopy, setMeta } from "./db/storage.js";
 import { $, errorBox, esc, setHeader, showTime, state, toast } from "./state.js";
+import { applyTheme } from "./theme.js";
 import { renderBackup } from "./views/backup.js";
+import { onBankAction, renderBank } from "./views/bank.js";
+import { onDuesAction, renderDues } from "./views/dues.js";
 import { renderHome } from "./views/home.js";
+import { onMembersAction, renderMembers } from "./views/members.js";
+import { saveSettingsForm } from "./views/settings.js";
 
 const app = $("app");
-const TABS = { home: renderHome, backup: null }; // backup 은 안전 백업 정보가 필요해 따로 처리
+// 화면: 그리기 함수와 그 화면의 버튼 처리 (backup 은 안전 백업 정보가 필요해 따로 그림)
+const TABS = { home: [renderHome], dues: [renderDues, onDuesAction], bank: [renderBank, onBankAction],
+  members: [renderMembers, onMembersAction], backup: [null] };
 let tab = "home";
 
 // ── 화면 전환 ──
@@ -19,13 +26,15 @@ async function show(name = tab) {
   $("tabbar").hidden = !state.db;
   if (!state.db) return renderWelcome();
   document.querySelectorAll("#tabbar [data-tab]").forEach((b) => b.setAttribute("aria-current", b.dataset.tab === tab ? "page" : "false"));
+  applyTheme(getSettings(state.db).team_color);
   if (tab === "backup") {
     const safety = await loadSafetyCopy();
     renderBackup(app, { hasSafety: !!safety, safetyAt: safety?.savedAt });
   } else {
-    renderHome(app);
+    TABS[tab][0](app);
   }
-  window.scrollTo(0, 0);
+  if (name !== show.last) window.scrollTo(0, 0); // 같은 화면을 다시 그릴 때는 스크롤 유지
+  show.last = name;
 }
 
 function renderWelcome() {
@@ -207,10 +216,19 @@ async function clearAll() {
 }
 
 // ── 이벤트 ──
-document.addEventListener("click", (e) => {
+document.addEventListener("click", async (e) => {
   const el = e.target.closest("[data-action], [data-tab]");
-  if (!el) return;
+  if (!el || el.closest("#sheet")) return; // 입력 창 안의 버튼은 입력 창이 처리
   if (el.dataset.tab) return show(el.dataset.tab);
+  const handler = TABS[tab]?.[1];
+  if (handler) {
+    try {
+      if (await handler(el.dataset.action, el)) return show(tab);
+    } catch (ex) {
+      toast(ex.message, "error");
+      return show(tab);
+    }
+  }
   const actions = {
     import: () => $("file-input").click(),
     "send-backup": () => onSendBackup(el),
@@ -227,6 +245,10 @@ document.addEventListener("submit", (e) => {
   if (e.target.id === "cloud-form") {
     e.preventDefault();
     saveCloudForm(e.target);
+  }
+  if (e.target.id === "settings-form") {
+    e.preventDefault();
+    saveSettingsForm(e.target).then(() => show());
   }
 });
 $("file-input").addEventListener("change", async (e) => {

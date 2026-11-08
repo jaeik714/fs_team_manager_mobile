@@ -17,6 +17,8 @@ fs_team_manager_mobile/
 ├── js/
 │   ├── app.js              # 시작점: sql.js 로드 → 장부 열기 → 화면 전환, 불러오기·백업 보내기
 │   ├── state.js            # 공통 상태(열린 장부)·저장(persist)·화면 도우미
+│   ├── ui.js               # 입력 창(시트)·월 이동·선택 단추
+│   ├── theme.js            # 팀 컬러 10종 (PC utils/theme.py 와 같은 값)
 │   ├── db/
 │   │   ├── schema.js       # DB 구조 (PC data/db.py 와 동일, SCHEMA_VERSION)
 │   │   ├── storage.js      # 장부 파일을 IndexedDB 에 저장·불러오기
@@ -25,7 +27,7 @@ fs_team_manager_mobile/
 │   │   ├── backup.js       # 파일로 보내기(공유 창/다운로드)·7일 알림 판단
 │   │   ├── secure.js       # 백업 비밀번호로 잠근 파일(.fmbk) — PC data/secure_backup.py 와 같은 형식
 │   │   └── cloud.js        # GitHub 비공개 저장소 올리기·받아오기 — PC data/cloud_sync.py 대응
-│   ├── views/              # 화면: home(대시보드)·backup / 다음: 회비 체크·거래 등록·공유
+│   ├── views/              # 화면: home·dues(회비)·bank(통장)·members(회원)·backup(+settings 팀 설정)
 │   └── share/              # 공유 이미지(Canvas) — PC utils/share_image.py 대응
 ├── vendor/sql.js/          # SQLite(WebAssembly) — 오프라인용으로 저장소에 포함 (MIT)
 ├── fonts/                  # 공유 이미지용 한글 글꼴(2,350자로 줄인 파일)

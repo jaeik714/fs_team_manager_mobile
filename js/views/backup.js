@@ -5,13 +5,14 @@ import { MIN_PASSWORD } from "../db/secure.js";
 import { getSettings } from "../db/repo.js";
 import { esc, setHeader, showTime, state } from "../state.js";
 import { backupBanner, backupStatusNow } from "./home.js";
+import { settingsSection } from "./settings.js";
 
 export function renderBackup(app, { hasSafety = false, safetyAt = null } = {}) {
   const s = getSettings(state.db);
   const status = backupStatusNow();
   const last = state.meta.lastBackupAt;
   const how = { share: "공유", download: "다운로드 폴더에 저장", import: "PC 등에서 불러옴", cloud: "GitHub 에 올림", pull: "GitHub 에서 받아옴" }[state.meta.lastBackupMethod] ?? "";
-  setHeader(s.team_name || "Futsal Manager", "백업", "장부 파일 보내기 · 불러오기");
+  setHeader(s.team_name || "Futsal Manager", "백업·설정", "PC 와 주고받기 · 팀 설정");
 
   app.innerHTML = `
     ${backupBanner()}
@@ -46,6 +47,8 @@ export function renderBackup(app, { hasSafety = false, safetyAt = null } = {}) {
       <button class="btn" data-action="import">장부 파일 불러오기</button>
       ${hasSafety ? `<button class="btn" data-action="undo-import">불러오기 전으로 되돌리기 (${esc(showTime(safetyAt))} 보관본)</button>` : ""}
     </section>
+
+    ${settingsSection()}
 
     <button class="btn ghost" data-action="clear">이 휴대폰에서 장부 지우기</button>`;
 }
