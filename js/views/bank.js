@@ -3,6 +3,7 @@ import { TX_CATEGORIES, TX_TYPES, categorySummary, currentMonth, getSettings, ge
 import { addTransaction, deleteTransaction, updateTransaction } from "../db/write.js";
 import { esc, persist, setHeader, state, toast } from "../state.js";
 import { monthLabel, monthNav, openSheet, segmented, shortDate, today, won } from "../ui.js";
+import { openShare } from "./share.js";
 
 const view = { month: currentMonth() };
 
@@ -29,7 +30,8 @@ export function renderBank(app) {
       <div class="ledger-row total"><span>${Number(view.month.slice(5))}월 말 잔액</span><b>${won(L.closing)}원</b></div>
       ${cats.length ? `<div class="cat-chips">${cats.map((c) => `<span class="chip static">${esc(c.category)} ${c.net >= 0 ? "+" : "−"}${won(Math.abs(c.net))}</span>`).join("")}</div>` : ""}
     </section>
-    <button class="btn primary" data-action="tx-add">＋ 거래 등록</button>
+    <div class="actions"><button class="btn primary" data-action="tx-add">＋ 거래 등록</button>
+      <button class="btn" data-action="share">📤 회비운영현황 공유</button></div>
     ${rows.length ? `<ul class="list tx-list">${rows.map((t) => `
       <li data-action="tx-edit" data-id="${t.id}">
         <div class="tx-date">${shortDate(t.date)}</div>
@@ -94,6 +96,7 @@ export async function onBankAction(action, el) {
   if (action === "month-prev" && view.month > min) view.month = shiftMonth(view.month, -1);
   else if (action === "month-next" && view.month < max) view.month = shiftMonth(view.month, 1);
   else if (action === "tx-add") await addTx();
+  else if (action === "share") await openShare(view.month);
   else if (action === "tx-edit") await editTx(Number(el.dataset.id));
   else return false;
   return true;

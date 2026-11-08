@@ -214,3 +214,18 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
 .swatch span { width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, var(--a) 50%, var(--b) 50%); border: 3px solid transparent; }
 .swatch input:checked + span { border-color: var(--text); }
 .swatch em { font-style: normal; line-height: 1.2; }
+
+/* ── 공유 이미지 미리보기 ── */
+.previews { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: start; }
+.previews figure { margin: 0; display: grid; gap: 4px; }
+.previews img { width: 100%; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); }
+.previews figcaption { font-size: .75rem; color: var(--muted); text-align: center; font-weight: 700; }
+
+/* ── 새 버전 알림 ── */
+.update-bar {
+  position: fixed; left: 12px; right: 12px; bottom: calc(72px + env(safe-area-inset-bottom)); z-index: 20;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 10px 12px 10px 16px; border-radius: 14px; background: #1C1917; color: #fff; font-size: .9rem; font-weight: 600;
+  box-shadow: 0 6px 20px rgb(0 0 0 / .25);
+}
+.update-bar[hidden] { display: none; }

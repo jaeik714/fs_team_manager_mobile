@@ -257,6 +257,35 @@ $("file-input").addEventListener("change", async (e) => {
   if (file) await importFile(file);
 });
 
+// ── 인터넷 없이 열기 (Service Worker) ──
+function registerServiceWorker() {
+  if (!("serviceWorker" in navigator)) return;
+  navigator.serviceWorker.register("sw.js").then((reg) => {
+    const offer = (worker) => {
+      // 새 버전을 다 받아 두었으면 알림 → 누르면 적용
+      const bar = $("update-bar");
+      bar.hidden = false;
+      bar.querySelector("button").onclick = () => worker.postMessage("skip-waiting");
+    };
+    if (reg.waiting && navigator.serviceWorker.controller) offer(reg.waiting);
+    reg.addEventListener("updatefound", () => {
+      const w = reg.installing;
+      w?.addEventListener("statechange", () => {
+        if (w.state === "installed" && navigator.serviceWorker.controller) offer(w);
+      });
+    });
+    reg.update().catch(() => {}); // 열 때마다 새 버전 확인 (인터넷 없으면 조용히 넘어감)
+  }).catch(() => {});
+  let reloaded = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (navigator.serviceWorker.controller && !reloaded && $("update-bar").dataset.applying) {
+      reloaded = true;
+      location.reload();
+    }
+  });
+  $("update-bar").addEventListener("click", () => ($("update-bar").dataset.applying = "1"), { capture: true });
+}
+
 // ── 시작 ──
 async function start() {
   try {
@@ -267,6 +296,7 @@ async function start() {
     return;
   }
   requestPersist();
+  registerServiceWorker();
   state.meta = await getMeta();
   const saved = await loadLedger();
   if (saved) {
